@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Universal Creative Hub{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Welcome to Universal Creative Hub</h1>
+    <p>Your self-hosted creative platform is running!</p>
+    
+    <div class="features">
+        <h2>✅ Phase 1 Complete</h2>
+        <ul>
+            <li>Django project setup</li>
+            <li>Docker configuration</li>
+            <li>Basic apps structure</li>
+            <li>Admin interface</li>
+            <li>Home page</li>
+        </ul>
+        
+        <h2>🚀 Next Steps</h2>
+        <ul>
+            <li>Blog with Markdown support</li>
+            <li>Media gallery</li>
+            <li>User authentication</li>
+            <li>Interactive music studio</li>
+        </ul>
+    </div>
+    
+    <div class="quick-links">
+        <h2>Quick Links</h2>
+        <a href="/admin/" class="btn">Go to Admin Panel</a>
+        <a href="/health/" class="btn">Health Check</a>
+    </div>
+    
+    <div class="status">
+        <h2>System Status</h2>
+        <p><strong>✅ Django</strong>: Running</p>
+        <p><strong>✅ Database</strong>: Connected (SQLite)</p>
+        <p><strong>🔄 Server</strong>: http://localhost:8000</p>
+        <p><strong>📅 Started</strong>: December 2025</p>
+    </div>
+</div>
+{% endblock %}

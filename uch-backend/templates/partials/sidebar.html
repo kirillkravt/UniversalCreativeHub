@@ -1,0 +1,67 @@
+<!-- templates/partials/sidebar.html -->
+<h6 class="sidebar-heading px-3 mt-4 mb-1 text-muted">
+	<span>Навигация</span>
+</h6>
+<ul class="nav flex-column mb-2">
+	<li class="nav-item">
+			<a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'home' %}">
+					<i class="bi bi-house"></i> Главная
+			</a>
+	</li>
+	<li class="nav-item">
+			<a class="nav-link" href="{% url 'article_list' %}">
+					<i class="bi bi-journal-text"></i> Все статьи
+			</a>
+	</li>
+</ul>
+
+<!-- Категории -->
+<h6 class="sidebar-heading px-3 mt-4 mb-1 text-muted">
+	<span>Категории</span>
+</h6>
+<ul class="nav flex-column mb-2">
+	{% for category in categories %}
+	<li class="nav-item">
+			<a class="nav-link" href="{% url 'category_detail' category.slug %}">
+					<i class="bi bi-folder"></i> {{ category.name }}
+					<span class="badge bg-secondary float-end">{{ category.article_count }}</span>
+			</a>
+	</li>
+	{% empty %}
+	<li class="nav-item">
+			<span class="nav-link text-muted">Нет категорий</span>
+	</li>
+	{% endfor %}
+</ul>
+
+<!-- Популярные теги -->
+<h6 class="sidebar-heading px-3 mt-4 mb-1 text-muted">
+	<span>Популярные теги</span>
+</h6>
+<div class="px-3 mb-3">
+	{% for tag in popular_tags %}
+	<a href="{% url 'tag_detail' tag.slug %}" class="badge bg-primary text-decoration-none me-1 mb-1">
+			{{ tag.name }}
+	</a>
+	{% empty %}
+	<span class="text-muted small">Нет тегов</span>
+	{% endfor %}
+</div>
+
+<!-- Последние статьи -->
+<h6 class="sidebar-heading px-3 mt-4 mb-1 text-muted">
+	<span>Последние статьи</span>
+</h6>
+<ul class="nav flex-column mb-2">
+	{% for article in latest_articles|slice:":5" %}
+	<li class="nav-item">
+			<a class="nav-link" href="{% url 'article_detail' article.slug %}">
+					<i class="bi bi-file-text"></i> {{ article.title|truncatechars:25 }}
+			</a>
+	</li>
+	{% empty %}
+	<li class="nav-item">
+			<span class="nav-link text-muted">Нет статей</span>
+	</li>
+	{% endfor %}
+</ul>

@@ -1,0 +1,71 @@
+<!-- templates/partials/navbar.html -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+	<div class="container-fluid">
+			<a class="navbar-brand" href="{% url 'home' %}">
+					<i class="bi bi-lightning-charge"></i> Universal Creative Hub
+			</a>
+			
+			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+							data-bs-target="#navbarNav" aria-controls="navbarNav">
+					<span class="navbar-toggler-icon"></span>
+			</button>
+			
+			<div class="collapse navbar-collapse" id="navbarNav">
+					<ul class="navbar-nav me-auto">
+							<li class="nav-item">
+									<a class="nav-link {% if request.path == '/' %}active{% endif %}" 
+										 href="{% url 'home' %}">
+											<i class="bi bi-house"></i> Главная
+									</a>
+							</li>
+							<li class="nav-item">
+									<a class="nav-link" href="{% url 'article_list' %}">
+											<i class="bi bi-journal-text"></i> Статьи
+									</a>
+							</li>
+							
+							<!-- Выпадающий список категорий -->
+							<li class="nav-item dropdown">
+									<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" 
+										 role="button" data-bs-toggle="dropdown">
+											<i class="bi bi-folder"></i> Категории
+									</a>
+									<ul class="dropdown-menu">
+											{% for category in categories|slice:":10" %}
+											<li>
+													<a class="dropdown-item" href="{% url 'category_detail' category.slug %}">
+															{{ category.name }}
+															<span class="badge bg-primary rounded-pill float-end">{{ category.article_count }}</span>
+													</a>
+											</li>
+											{% empty %}
+											<li><a class="dropdown-item text-muted" href="#">Нет категорий</a></li>
+											{% endfor %}
+											<li><hr class="dropdown-divider"></li>
+											<li>
+													<a class="dropdown-item" href="{% url 'category_list' %}">
+															<i class="bi bi-list-ul"></i> Все категории
+													</a>
+											</li>
+									</ul>
+							</li>
+							
+							{% if user.is_authenticated and user.is_staff %}
+							<li class="nav-item">
+									<a class="nav-link" href="/admin/" target="_blank">
+											<i class="bi bi-gear"></i> Админка
+									</a>
+							</li>
+							{% endif %}
+					</ul>
+					
+					<form class="d-flex" action="{% url 'search' %}" method="get">
+							<input class="form-control me-2" type="search" name="q" 
+										 placeholder="Поиск статей..." aria-label="Search">
+							<button class="btn btn-outline-light" type="submit">
+									<i class="bi bi-search"></i>
+							</button>
+					</form>
+			</div>
+	</div>
+</nav>
