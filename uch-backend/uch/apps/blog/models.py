@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
 from taggit.managers import TaggableManager
-
+from markdownx.models import MarkdownxField
 
 class Category(models.Model):
     """Категории статей (иерархические)"""
@@ -38,12 +38,15 @@ class Article(models.Model):
     title = models.CharField(max_length=200, verbose_name="Заголовок")
     slug = models.SlugField(max_length=200, unique=True, verbose_name="URL")
     excerpt = models.TextField(max_length=500, blank=True, verbose_name="Краткое описание")
-    content = models.TextField(verbose_name="Содержание (Markdown)")
+    content = MarkdownxField(verbose_name='Содержимое (Markdown)')
     content_html = models.TextField(blank=True, editable=False, verbose_name="Содержание (HTML)")
     
     cover_image = models.ImageField(upload_to='articles/covers/', 
                                    blank=True, null=True,
                                    verbose_name="Обложка")
+    
+    source_filename = models.CharField(max_length=255, blank=True, null=True, 
+                                      verbose_name="Исходный файл")
     
     author = models.ForeignKey(User, on_delete=models.CASCADE, 
                               verbose_name="Автор")
@@ -139,8 +142,18 @@ class Comment(models.Model):
     """Комментарии к статьям"""
     article = models.ForeignKey(Article, on_delete=models.CASCADE,
                                related_name='comments', verbose_name="Статья")
-    author = models.ForeignKey(User, on_delete=models.CASCADE,
-                              verbose_name="Автор")
+    
+    # Для авторизованных пользователей (делаем optional)
+    author = models.ForeignKey(User, on_delete=models.SET_NULL,
+                              null=True, blank=True,
+                              related_name='comments', verbose_name="Автор (зарегистрированный)")
+    
+    # Для анонимных пользователей (новые поля)
+    author_name = models.CharField(max_length=100, blank=True, 
+                                  verbose_name="Имя (аноним)")
+    author_email = models.EmailField(blank=True, 
+                                    verbose_name="Email (аноним)")
+    
     content = models.TextField(max_length=1000, verbose_name="Текст комментария")
     is_approved = models.BooleanField(default=False, verbose_name="Одобрен")
     
@@ -158,4 +171,12 @@ class Comment(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"Комментарий от {self.author} к {self.article}"
+        author = self.author.username if self.author else self.author_name or 'Аноним'
+        return f"Комментарий от {author} к {self.article}"
+    
+    @property
+    def display_author(self):
+        """Возвращает отображаемое имя автора"""
+        if self.author:
+            return self.author.username
+        return self.author_name or 'Аноним'

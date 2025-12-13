@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Творческая студия - Debug</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Творческая студия - Debug Mode</h1>
+        
+        <div class="alert alert-warning">
+            <h4>Этапы загрузки:</h4>
+            <ol id="debug-steps">
+                <li>HTML загружен <span id="step1">❌</span></li>
+                <li>JavaScript выполняется <span id="step2">❌</span></li>
+                <li>Vite доступен <span id="step3">❌</span></li>
+                <li>React загружен <span id="step4">❌</span></li>
+            </ol>
+        </div>
+        
+        <div id="studio-root">
+            <div class="alert alert-info">
+                React приложение появится здесь
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Шаг 1: HTML загружен
+        document.getElementById('step1').textContent = '✅';
+        document.getElementById('step1').className = 'text-success';
+        console.log('Step 1: HTML loaded');
+        
+        // Шаг 2: JavaScript выполняется
+        setTimeout(() => {
+            document.getElementById('step2').textContent = '✅';
+            document.getElementById('step2').className = 'text-success';
+            console.log('Step 2: JavaScript executing');
+            
+            // Шаг 3: Проверяем Vite
+            fetch('http://localhost:3000/src/main.tsx')
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('step3').textContent = '✅';
+                        document.getElementById('step3').className = 'text-success';
+                        console.log('Step 3: Vite server available');
+                        
+                        // Шаг 4: Загружаем React
+                        const script = document.createElement('script');
+                        script.type = 'module';
+                        script.src = 'http://localhost:3000/src/main.tsx';
+                        
+                        script.onload = () => {
+                            document.getElementById('step4').textContent = '✅';
+                            document.getElementById('step4').className = 'text-success';
+                            console.log('Step 4: React loaded successfully');
+                        };
+                        
+                        script.onerror = (error) => {
+                            document.getElementById('step4').textContent = '❌';
+                            document.getElementById('step4').className = 'text-danger';
+                            console.error('Step 4: React load failed:', error);
+                            
+                            // Показываем ошибку
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'alert alert-danger mt-3';
+                            errorDiv.innerHTML = `
+                                <h5>Ошибка загрузки React:</h5>
+                                <p>Проверь:</p>
+                                <ul>
+                                    <li><a href="http://localhost:3000/src/main.tsx" target="_blank">main.tsx доступен?</a></li>
+                                    <li>Консоль браузера на ошибки CORS</li>
+                                    <li>Network tab в DevTools</li>
+                                </ul>
+                            `;
+                            document.querySelector('.container').appendChild(errorDiv);
+                        };
+                        
+                        document.body.appendChild(script);
+                    } else {
+                        document.getElementById('step3').textContent = '❌';
+                        document.getElementById('step3').className = 'text-danger';
+                        console.error('Step 3: Vite server not responding');
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('step3').textContent = '❌';
+                    document.getElementById('step3').className = 'text-danger';
+                    console.error('Step 3: Vite fetch error:', error);
+                });
+        }, 100);
+    </script>
+</body>
+</html>

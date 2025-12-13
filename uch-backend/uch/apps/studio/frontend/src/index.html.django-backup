@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_head %}
+<script>
+    console.log('🎵 Studio Template - Iframe Loader');
+    
+    // Прячем стандартный контент
+    document.addEventListener('DOMContentLoaded', function() {
+        const rootEl = document.getElementById('studio-root');
+        if (rootEl) {
+            rootEl.style.display = 'none';
+        }
+        
+        // Создаем iframe с Vite dev сервером
+        const viteIframe = document.createElement('iframe');
+        viteIframe.src = 'http://localhost:5173/';
+        viteIframe.style.width = '100%';
+        viteIframe.style.height = '800px';
+        viteIframe.style.border = 'none';
+        viteIframe.style.marginTop = '20px';
+        
+        // Добавляем iframe после контейнера
+        const container = document.querySelector('.container');
+        if (container) {
+            container.appendChild(viteIframe);
+        }
+        
+        console.log('✅ Iframe with Vite loaded');
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{{ title }}</h1>
+    <p class="lead">Творческая студия Universal Creative Hub</p>
+    
+    <!-- Контейнер для React приложения -->
+    <div id="studio-root">
+        <div class="alert alert-info text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2">Загрузка творческой студии...</p>
+            <p id="studio-status" class="mb-0">
+                {% if debug %}
+                🔧 Dev mode: загрузка через iframe...
+                {% else %}
+                🚀 Production mode: загрузка статических файлов...
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

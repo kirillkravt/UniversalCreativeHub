@@ -1,29 +1,72 @@
 from django.shortcuts import render, get_object_or_404
-from django.core.paginator import Paginator
 from django.views.generic import ListView, DetailView
-from django.db import models
+from django.db.models import Count, Q
 from .models import Article, Category
-from taggit.models import Tag
 
+# Context processor для боковой панели
+def sidebar_context(request):
+    """Контекст для боковой панели (категории и последние статьи)"""
+    try:
+        # Категории с количеством опубликованных статей
+        categories = Category.objects.annotate(
+            article_count=Count('articles', 
+                filter=Q(articles__status='published')  # Используем status вместо is_published
+            )
+        ).filter(article_count__gt=0)
+        
+        # Последние опубликованные статьи
+        recent_articles = Article.objects.filter(
+            status='published'  # Используем status вместо is_published
+        ).order_by('-created_at')[:5]
+        
+        return {
+            'blog_categories': categories,
+            'blog_recent_articles': recent_articles,
+        }
+    except Exception:
+        # Если база данных еще не готова
+        return {
+            'blog_categories': [],
+            'blog_recent_articles': [],
+        }
 
-class ArticleListView(ListView):
-    """Список всех статей с пагинацией"""
+# Главная страница
+class HomeView(ListView):
+    template_name = 'blog/index.html'
     model = Article
+    context_object_name = 'latest_articles'
+    paginate_by = 6
+    
+    def get_queryset(self):
+        # Фильтруем только опубликованные статьи
+        return Article.objects.filter(
+            status='published'  # Используем status вместо is_published
+        ).order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(sidebar_context(self.request))
+        return context
+
+# Список всех статей
+class ArticleListView(ListView):
     template_name = 'blog/article_list.html'
+    model = Article
     context_object_name = 'articles'
     paginate_by = 10
     
     def get_queryset(self):
-        queryset = Article.objects.filter(status='published')
+        queryset = Article.objects.filter(
+            status='published'  # Используем status вместо is_published
+        ).order_by('-created_at')
         
         # Фильтрация по категории
         category_slug = self.kwargs.get('category_slug')
         if category_slug:
-            category = get_object_or_404(Category, slug=category_slug)
-            queryset = queryset.filter(category=category)
+            queryset = queryset.filter(category__slug=category_slug)
         
         # Фильтрация по тегу
-        tag_slug = self.request.GET.get('tag')
+        tag_slug = self.kwargs.get('tag_slug')
         if tag_slug:
             queryset = queryset.filter(tags__slug=tag_slug)
         
@@ -31,85 +74,84 @@ class ArticleListView(ListView):
         search_query = self.request.GET.get('q')
         if search_query:
             queryset = queryset.filter(
-                models.Q(title__icontains=search_query) |
-                models.Q(content__icontains=search_query) |
-                models.Q(excerpt__icontains=search_query)
+                Q(title__icontains=search_query) |
+                Q(content__icontains=search_query) |
+                Q(excerpt__icontains=search_query)
             )
         
-        return queryset.select_related('author', 'category').prefetch_related('tags')
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['categories'] = Category.objects.filter(is_active=True)
-        context['recent_articles'] = Article.objects.filter(status='published')[:5]
-        
-        # Добавляем популярные теги
-        from django.db.models import Count
-        context['popular_tags'] = Tag.objects.annotate(
-            num_times=Count('taggit_taggeditem_items')
-        ).order_by('-num_times')[:10]
-        
+        context.update(sidebar_context(self.request))
         return context
 
-
+# Детальная страница статьи
 class ArticleDetailView(DetailView):
-    """Детальная страница статьи"""
-    model = Article
     template_name = 'blog/article_detail.html'
+    model = Article
     context_object_name = 'article'
-    slug_field = 'slug'
-    slug_url_kwarg = 'slug'
     
     def get_queryset(self):
+        # Показываем только опубликованные статьи
         return Article.objects.filter(status='published')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['categories'] = Category.objects.filter(is_active=True)
-        context['recent_articles'] = Article.objects.filter(status='published').exclude(
-            pk=self.object.pk
-        )[:5]
         
-        # Добавляем теги текущей статьи
-        context['article_tags'] = self.object.tags.all()
+        # Добавляем комментарии к статье (только одобренные)
+        article = self.get_object()
+        context['comments'] = article.comments.filter(is_approved=True)
+        
+        # Добавляем sidebar контекст
+        context.update(sidebar_context(self.request))
+        
+        return context
+        context.update(sidebar_context(self.request))
+        
+        # Добавляем навигацию (предыдущая/следующая статья)
+        article = self.object
+        context['previous_article'] = Article.objects.filter(
+            status='published',
+            created_at__lt=article.created_at
+        ).order_by('-created_at').first()
+        
+        context['next_article'] = Article.objects.filter(
+            status='published',
+            created_at__gt=article.created_at
+        ).order_by('created_at').first()
         
         return context
 
-
+# Список категорий
 class CategoryListView(ListView):
-    """Список категорий"""
-    model = Category
     template_name = 'blog/category_list.html'
+    model = Category
     context_object_name = 'categories'
     
     def get_queryset(self):
-        return Category.objects.filter(is_active=True, parent=None)
+        return Category.objects.annotate(
+            article_count=Count('article', 
+                filter=Q(article__status='published')  # Используем status
+            )
+        ).filter(article_count__gt=0).order_by('name')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['recent_articles'] = Article.objects.filter(status='published')[:5]
+        context.update(sidebar_context(self.request))
         return context
 
-def home_view(request):
-    """Домашняя страница блога"""
-    featured_articles = Article.objects.filter(
-        status='published', is_featured=True
-    )[:3]
+# Статьи по категории
+class CategoryDetailView(DetailView):
+    template_name = 'blog/category_detail.html'
+    model = Category
+    context_object_name = 'category'
     
-    recent_articles = Article.objects.filter(status='published')[:6]
-    categories = Category.objects.filter(is_active=True)[:8]  # Уже есть
-    
-    # Популярные теги
-    from django.db.models import Count
-    from taggit.models import Tag
-    popular_tags = Tag.objects.annotate(
-        num_times=Count('taggit_taggeditem_items')
-    ).order_by('-num_times')[:10]
-    
-    context = {
-        'featured_articles': featured_articles,
-        'recent_articles': recent_articles,
-        'categories': categories,  # Это передается
-        'popular_tags': popular_tags,
-    }
-    return render(request, 'blog/home.html', context)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['articles'] = Article.objects.filter(
+            category=self.object, 
+            status='published'  # Используем status
+        ).order_by('-created_at')
+        context.update(sidebar_context(self.request))
+        return context

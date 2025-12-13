@@ -1,0 +1,52 @@
+{% load static %}
+
+<div class="card sidebar-card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Категории</h5>
+    </div>
+    <div class="card-body">
+        <ul class="list-unstyled mb-0">
+            {% for category in blog_categories %}
+                {% if category.slug %}
+                <li class="mb-2">
+                    <a href="{% url 'blog:category_detail' category.slug %}" class="text-decoration-none d-flex justify-content-between">
+                        <span>{{ category.name }}</span>
+                        <span class="badge bg-primary rounded-pill">{{ category.article_count|default:0 }}</span>
+                    </a>
+                </li>
+                {% endif %}
+            {% empty %}
+                <li class="text-muted">Категорий пока нет</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<div class="card sidebar-card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Последние статьи</h5>
+    </div>
+    <div class="card-body">
+        <ul class="list-unstyled mb-0">
+            {% for article in blog_recent_articles %}
+                <li class="mb-3 pb-2 border-bottom">
+                    <a href="{% url 'blog:article_detail' article.slug %}" class="text-decoration-none">
+                        <h6 class="mb-1">{{ article.title|truncatechars:50 }}</h6>
+                    </a>
+                    <div class="d-flex justify-content-between">
+                        <small class="text-muted">{{ article.created_at|date:'d.m.Y' }}</small>
+                        {% if article.category and article.category.slug %}
+                            <a href="{% url 'blog:category_detail' article.category.slug %}" class="badge bg-secondary text-decoration-none">
+                                {{ article.category.name }}
+                            </a>
+                        {% elif article.category %}
+                            <span class="badge bg-secondary">{{ article.category.name }}</span>
+                        {% endif %}
+                    </div>
+                </li>
+            {% empty %}
+                <li class="text-muted">Статей пока нет</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>

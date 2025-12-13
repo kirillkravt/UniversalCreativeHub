@@ -1,94 +1,53 @@
-/* static/css/style.css */
-
-/* Основные стили для боковой панели */
-.sidebar {
-	position: fixed;
-	top: 56px; /* Высота навигации */
-	bottom: 0;
-	left: 0;
-	z-index: 100;
-	padding: 20px 0 0;
-	box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
-	background-color: #f8f9fa;
-	overflow-y: auto;
+# uch-backend/static/css/style.css
+mkdir -p uch-backend/static/css
+cat > uch-backend/static/css/style.css << 'EOF'
+/* Базовые стили для блога */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
 }
 
-.sidebar-sticky {
-	position: relative;
-	top: 0;
-	height: calc(100vh - 56px);
-	padding-top: .5rem;
-	overflow-x: hidden;
-	overflow-y: auto;
-}
-
-.sidebar .nav-link {
-	font-weight: 500;
-	color: #333;
-	padding: 0.5rem 1rem;
-	border-left: 3px solid transparent;
-}
-
-.sidebar .nav-link:hover {
-	color: #007bff;
-	background-color: rgba(0, 123, 255, 0.1);
-	border-left-color: #007bff;
-}
-
-.sidebar .nav-link.active {
-	color: #007bff;
-	background-color: rgba(0, 123, 255, 0.1);
-	border-left-color: #007bff;
-}
-
-.sidebar-heading {
-	font-size: .75rem;
-	text-transform: uppercase;
-}
-
-/* Основной контент */
-main.main-content {
-	padding-top: 76px; /* Отступ для навигации */
-	min-height: calc(100vh - 56px);
-}
-
-/* Адаптивность */
-@media (max-width: 767.98px) {
-	.sidebar {
-			position: static;
-			padding-top: 0;
-			height: auto;
-			margin-top: 0;
-	}
-	
-	main.main-content {
-			padding-top: 56px;
-	}
-}
-
-/* Карточки статей */
 .card {
-	transition: transform 0.2s, box-shadow 0.2s;
-	border: none;
-	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .card:hover {
-	transform: translateY(-5px);
-	box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
 }
 
-.card-img-top {
-	height: 200px;
-	object-fit: cover;
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
 }
 
-/* Навигация */
-.navbar {
-	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+/* Стили для Markdown контента */
+.markdown-content h1, 
+.markdown-content h2, 
+.markdown-content h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
 }
 
-/* Бейджи */
-.badge {
-	font-weight: 500;
+.markdown-content p {
+    margin-bottom: 1rem;
 }
+
+.markdown-content code {
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.markdown-content pre {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 5px;
+    overflow-x: auto;
+}
+EOF

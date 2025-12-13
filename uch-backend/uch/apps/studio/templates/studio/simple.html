@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Studio Simple Test</title>
+</head>
+<body>
+    <h1>Simple Test</h1>
+    <p id="test-js">JavaScript not executed</p>
+    
+    <script>
+        console.log('Simple test script executing...');
+        document.getElementById('test-js').textContent = 'JavaScript executed!';
+        
+        // Пробуем загрузить Vite
+        const script = document.createElement('script');
+        script.src = 'http://localhost:3000/src/main.tsx';
+        script.type = 'module';
+        script.onload = () => console.log('✅ Vite script loaded');
+        script.onerror = (e) => console.error('❌ Vite script error:', e);
+        document.body.appendChild(script);
+    </script>
+</body>
+</html>
