@@ -15,7 +15,8 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "allowSyntheticDefaultImports": true,
-    "types": ["vite/client"]
+    "esModuleInterop": true,
+    "types": ["vite/client", "node"]
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

@@ -4,6 +4,9 @@
  * Исправлено: TypeScript ошибки итерации Map
  */
 
+
+import { nodeRegistry, NodeInstance, generateNodeId } from "./NodeRegistry"
+
 import { EventEmitter } from './EventEmitter'
 
 // === ТИПЫ ===
@@ -46,7 +49,7 @@ export class CoreOrchestrator extends EventEmitter {
   private transport: TransportState
   private nodes: Map<string, NodeDescriptor>
   private connections: Map<string, string[]> // sourceId -> targetId[]
-  private clockInterval: NodeJS.Timeout | null
+  private clockInterval: number | null
   
   constructor() {
     super()
@@ -313,9 +316,111 @@ export class CoreOrchestrator extends EventEmitter {
       return false
     }
   }
+
+  // ==================== Управление экземплярами нод ====================
+
+  private nodeInstances: Map<string, NodeInstance> = new Map();
+
+  /**
+   * Добавить новый экземпляр ноды на рабочую область
+   * @param typeId Идентификатор типа ноды (должен быть зарегистрирован в NodeRegistry)
+   * @param position Позиция на рабочей области {x, y}
+   * @returns Идентификатор созданного экземпляра или null при ошибке
+   */
+  addNodeInstance(typeId: string, position: { x: number; y: number }): string | null {
+    // Проверяем существование типа
+    if (!nodeRegistry.hasNodeType(typeId)) {
+      console.error(`[CoreOrchestrator] Тип ноды '${typeId}' не зарегистрирован.`);
+      return null;
+    }
+    
+    // Генерируем уникальный ID
+    const nodeId = generateNodeId(typeId);
+    
+    const instance: NodeInstance = {
+      id: nodeId,
+      typeId,
+      position,
+      state: {}
+    };
+    
+    this.nodeInstances.set(nodeId, instance);
+    console.log(`[CoreOrchestrator] Создан экземпляр ноды: ${nodeId} на позиции (${position.x}, ${position.y})`);
+    
+    // Отправляем событие о добавлении ноды
+    this.emit(CoreEventType.NODE_ADDED, { nodeId, typeId, position });
+    
+    return nodeId;
+  }
+
+  /**
+   * Удалить экземпляр ноды с рабочей области
+   * @param nodeId Идентификатор экземпляра ноды
+   * @returns true если удаление успешно, false если нода не найдена
+   */
+  removeNodeInstance(nodeId: string): boolean {
+    if (!this.nodeInstances.has(nodeId)) {
+      console.warn(`[CoreOrchestrator] Попытка удалить несуществующую ноду: ${nodeId}`);
+      return false;
+    }
+    
+    this.nodeInstances.delete(nodeId);
+    console.log(`[CoreOrchestrator] Удален экземпляр ноды: ${nodeId}`);
+    
+    // Отправляем событие об удалении ноды
+    this.emit(CoreEventType.NODE_REMOVED, { nodeId });
+    
+    return true;
+  }
+
+  /**
+   * Получить список всех экземпляров нод
+   * @returns Массив экземпляров нод
+   */
+  getAllNodeInstances(): NodeInstance[] {
+    return Array.from(this.nodeInstances.values());
+  }
+
+  /**
+   * Получить конкретный экземпляр ноды
+   * @param nodeId Идентификатор экземпляра
+   * @returns Экземпляр ноды или undefined если не найден
+   */
+  getNodeInstance(nodeId: string): NodeInstance | undefined {
+    return this.nodeInstances.get(nodeId);
+  }
+
+  /**
+   * Обновить позицию ноды на рабочей области
+   * @param nodeId Идентификатор экземпляра
+   * @param newPosition Новая позиция {x, y}
+   * @returns true если обновление успешно
+   */
+  updateNodePosition(nodeId: string, newPosition: { x: number; y: number }): boolean {
+    const instance = this.nodeInstances.get(nodeId);
+    if (!instance) {
+      console.warn(`[CoreOrchestrator] Попытка обновить позицию несуществующей ноды: ${nodeId}`);
+      return false;
+    }
+    
+    instance.position = newPosition;
+    this.nodeInstances.set(nodeId, instance);
+    
+    // Можно добавить событие об обновлении позиции, если нужно
+    // this.emit(CoreEventType.NODE_UPDATED, { nodeId, position: newPosition });
+    
+    return true;
+  }
 }
 
-// Глобальный экземпляр ядра
-export const coreOrchestrator = new CoreOrchestrator()
+// Создаем и экспортируем глобальный экземпляр CoreOrchestrator
+export const coreOrchestrator = new CoreOrchestrator();
 
-export default coreOrchestrator
+// Для отладки в браузере добавляем в глобальную область видимости
+if (typeof window !== 'undefined') {
+  (window as any).__UCH_DEBUG__ = {
+    coreOrchestrator,
+    // Другие отладочные объекты могут быть добавлены здесь
+  };
+  console.log('[CoreOrchestrator] Глобальный экземпляр создан и доступен как window.__UCH_DEBUG__.coreOrchestrator');
+}
