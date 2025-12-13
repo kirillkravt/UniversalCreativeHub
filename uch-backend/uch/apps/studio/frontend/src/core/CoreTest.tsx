@@ -9,13 +9,17 @@ const CoreTest: React.FC = () => {
   // Подписываемся на события ядра
   useEffect(() => {
     const updateTransport = () => {
-      setTransport(coreOrchestrator.getTransportState())
-    }
+      const newTransportState = coreOrchestrator.getTransportState();
+      setTransport(newTransportState);
+      // КРИТИЧНО: Обновляем локальное состояние темпа для слайдера
+      setTempo(newTransportState.tempo);
+    };
     
     const updateNodes = () => {
-      setNodes(coreOrchestrator.getAllNodes())
-    }
+      setNodes(coreOrchestrator.getAllNodes());
+    };
     
+    // Подписка на события
     coreOrchestrator.on('transport:start', updateTransport)
     coreOrchestrator.on('transport:stop', updateTransport)
     coreOrchestrator.on('transport:pause', updateTransport)
