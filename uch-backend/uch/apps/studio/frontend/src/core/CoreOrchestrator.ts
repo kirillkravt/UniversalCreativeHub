@@ -49,7 +49,7 @@ export class CoreOrchestrator extends EventEmitter {
   private transport: TransportState
   private nodes: Map<string, NodeDescriptor>
   private connections: Map<string, string[]> // sourceId -> targetId[]
-  private clockInterval: number | null
+  private clockInterval: NodeJS.Timeout | null
   
   constructor() {
     super()
