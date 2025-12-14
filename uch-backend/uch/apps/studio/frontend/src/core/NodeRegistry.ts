@@ -123,3 +123,18 @@ nodeRegistry.registerNodeType({
 });
 
 console.log('[NodeRegistry] Стандартные типы нод зарегистрированы.');
+
+// Регистрация типа "strudel-repl" (ВРЕМЕННОЕ РЕШЕНИЕ)
+import StrudelREPLNode from './StrudelREPLNode';
+
+nodeRegistry.registerNodeType({
+  id: 'strudel-repl',
+  name: 'Strudel REPL',
+  description: 'Временное решение: REPL для Strudel (TidalCycles) с CDN загрузкой',
+  icon: '🎹',
+  factory: createNodeFactory(StrudelREPLNode),
+  defaultWidth: 400,
+  defaultHeight: 420
+});
+
+console.log('[NodeRegistry] StrudelREPLNode зарегистрирован (временное решение).');
