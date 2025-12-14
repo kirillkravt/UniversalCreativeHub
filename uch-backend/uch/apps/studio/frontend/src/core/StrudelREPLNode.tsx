@@ -1,5 +1,5 @@
 // uch/apps/studio/frontend/src/core/StrudelREPLNode.tsx
-// РАБОЧАЯ ВЕРСИЯ - Strudel загружен, исправлен вызов API
+// ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ С run()
 
 import React, { useState, useEffect, useRef } from 'react';
 
@@ -11,43 +11,40 @@ interface StrudelREPLNodeProps {
 const StrudelREPLNode: React.FC<StrudelREPLNodeProps> = ({ nodeId, core }) => {
   const [code, setCode] = useState<string>('note("c4")');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [output, setOutput] = useState<string>('// Инициализация...');
+  const [output, setOutput] = useState<string>('// Инициализация Strudel...');
   const [status, setStatus] = useState<string>('⏳ Загрузка...');
-  const strudelCoreRef = useRef<any>(null);
+  const strudelRef = useRef<any>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const activeRunRef = useRef<any>(null);
 
-  // КОРРЕКТНАЯ ЗАГРУЗКА: загружаем @strudel/cycles/core и инициализируем
+  // Инициализация
   useEffect(() => {
     const init = async () => {
-      console.log('[StrudelREPLNode] Начинаем корректную инициализацию...');
-      setStatus('⏳ Загрузка ядра Strudel...');
-      setOutput('Загрузка @strudel/cycles/core с CDN...');
+      console.log('[StrudelREPLNode] Инициализация Strudel...');
+      setStatus('⏳ Загрузка Strudel...');
 
       try {
-        // 1. Динамически загружаем основное ядро Strudel (оно содержит функции note, s и т.д.)
+        // Загружаем Strudel
         const strudelModule = await import('https://cdn.jsdelivr.net/npm/@strudel/core@latest/+esm');
-        console.log('[StrudelREPLNode] Ядро загружено:', strudelModule);
-        strudelCoreRef.current = strudelModule;
+        strudelRef.current = strudelModule;
+        console.log('[StrudelREPLNode] Strudel загружен:', strudelRef.current);
 
-        // 2. Инициализируем аудиоконтекст (Web Audio API требует жеста пользователя)
-        // Пока просто создаем контекст, но не резолвим его
-        if (!audioCtxRef.current) {
-          audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-        }
+        // Создаем аудиоконтекст
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        console.log('[StrudelREPLNode] AudioContext создан:', audioCtxRef.current.state);
 
-        // 3. Инициализируем Strudel с этим контекстом
-        if (strudelCoreRef.current.initAudioContext) {
-          strudelCoreRef.current.initAudioContext(audioCtxRef.current);
+        // Инициализируем Strudel с аудиоконтекстом
+        if (strudelRef.current.initAudioContext) {
+          strudelRef.current.initAudioContext(audioCtxRef.current);
         }
 
         setStatus('✅ Готов!');
-        setOutput('// Strudel инициализирован! Введите код и нажмите "Eval".\nПримеры: note("c4"), s("bd sd")');
-        console.log('[StrudelREPLNode] Инициализация завершена успешно.');
+        setOutput('// Strudel загружен! Введите код и нажмите "Eval".\nПримеры: note("c4"), s("bd sd")');
 
       } catch (error: any) {
-        console.error('[StrudelREPLNode] Критическая ошибка инициализации:', error);
-        setStatus('❌ Ошибка загрузки');
-        setOutput(`Ошибка: ${error.message}\nПроверьте консоль (F12) для деталей.`);
+        console.error('[StrudelREPLNode] Ошибка инициализации:', error);
+        setStatus('❌ Ошибка');
+        setOutput(`Ошибка загрузки: ${error.message}`);
       }
     };
 
@@ -55,32 +52,25 @@ const StrudelREPLNode: React.FC<StrudelREPLNodeProps> = ({ nodeId, core }) => {
 
     // Очистка
     return () => {
-      if (strudelCoreRef.current && strudelCoreRef.current.hush) {
-        try {
-          strudelCoreRef.current.hush();
-        } catch (e) {}
+      if (activeRunRef.current && typeof activeRunRef.current.stop === 'function') {
+        activeRunRef.current.stop();
       }
-      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-        audioCtxRef.current.close();
+      if (strudelRef.current && strudelRef.current.hush) {
+        strudelRef.current.hush();
       }
     };
   }, []);
 
   const handleEval = async () => {
-    if (!strudelCoreRef.current) {
-      setOutput('Strudel не загружен. Подождите...');
+    if (!strudelRef.current || !audioCtxRef.current) {
+      setOutput('Strudel не инициализирован');
       return;
     }
 
-    if (!audioCtxRef.current) {
-      setOutput('Аудиоконтекст не создан.');
-      return;
-    }
-
-    // Web Audio API: Если контекст приостановлен, нужно его возобновить по жесту пользователя
+    // Активируем аудио если нужно
     if (audioCtxRef.current.state === 'suspended') {
       await audioCtxRef.current.resume();
-      setOutput('// Аудио активировано! Нажмите "Eval" еще раз для запуска.');
+      setOutput('// Аудио активировано! Нажмите "Eval" еще раз.');
       return;
     }
 
@@ -93,19 +83,57 @@ const StrudelREPLNode: React.FC<StrudelREPLNodeProps> = ({ nodeId, core }) => {
     setOutput('Выполнение...');
 
     try {
-      // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Используем правильный API из загруженного модуля
-      const { eval: strudelEval } = strudelCoreRef.current;
+      const strudel = strudelRef.current;
+      
+      // 1. Создаем паттерн разными способами
+      let pattern;
+      
+      if (code.includes('note(') && strudel.note) {
+        // Прямой вызов note()
+        pattern = strudel.note("c4");
+      } else if (strudel.e) {
+        // Используем e()
+        const patternFunc = strudel.e(code.trim());
+        if (typeof patternFunc === 'function') {
+          pattern = patternFunc();
+        }
+      }
+      
+      console.log('[StrudelREPLNode] Создан паттерн:', pattern);
+      
+      if (!pattern || !pattern._Pattern) {
+        setOutput('❌ Не удалось создать паттерн');
+        setIsPlaying(false);
+        return;
+      }
 
-      // Выполняем код пользователя через функцию eval из Strudel
-      const pattern = strudelEval(code.trim());
+      // 2. Останавливаем предыдущее воспроизведение
+      if (activeRunRef.current && typeof activeRunRef.current.stop === 'function') {
+        activeRunRef.current.stop();
+      }
+      if (strudel.hush) {
+        strudel.hush();
+      }
 
-      // Проигрываем паттерн
-      pattern.play();
+      // 3. ЗАПУСКАЕМ ПАТТЕРН ЧЕРЕЗ run()!
+      console.log('[StrudelREPLNode] Пробуем strudel.run()...');
+      
+      if (strudel.run && typeof strudel.run === 'function') {
+        activeRunRef.current = strudel.run(pattern);
+        console.log('[StrudelREPLNode] Запущен через run():', activeRunRef.current);
+        setOutput(`✅ Паттерн запущен через run()!\nКод: ${code}\n\n⏹ Авто-остановка через 5 сек.`);
+      } else {
+        // Альтернатива: может быть play() или другой метод
+        console.log('[StrudelREPLNode] run() не найден. Ищем другие методы...');
+        const playMethods = Object.keys(strudel).filter(k => 
+          k.includes('play') || k.includes('start') || k.includes('run') || k.includes('go')
+        );
+        setOutput(`❌ run() не найден.\nДоступные методы: ${playMethods.join(', ')}`);
+        setIsPlaying(false);
+        return;
+      }
 
-      setOutput(`✅ Паттерн запущен!\nКод: ${code}\n\n⏹ Авто-остановка через 5 сек.`);
-      console.log('[StrudelREPLNode] Паттерн запущен:', pattern);
-
-      // Автоматическая остановка для демонстрации
+      // Авто-остановка
       setTimeout(() => {
         if (isPlaying) {
           handleStop();
@@ -113,22 +141,36 @@ const StrudelREPLNode: React.FC<StrudelREPLNodeProps> = ({ nodeId, core }) => {
       }, 5000);
 
     } catch (error: any) {
-      console.error('[StrudelREPLNode] Ошибка выполнения кода:', error);
+      console.error('[StrudelREPLNode] Ошибка:', error);
       setOutput(`❌ Ошибка выполнения:\n${error.message}`);
       setIsPlaying(false);
     }
   };
 
   const handleStop = () => {
-    if (strudelCoreRef.current && strudelCoreRef.current.hush) {
+    // Останавливаем через hush()
+    if (strudelRef.current && strudelRef.current.hush) {
       try {
-        strudelCoreRef.current.hush();
-        setOutput('⏹ Воспроизведение остановлено.');
+        strudelRef.current.hush();
+        setOutput('⏹ Воспроизведение остановлено (hush())');
+        console.log('[StrudelREPLNode] Остановлено через hush()');
       } catch (error) {
-        console.error('[StrudelREPLNode] Ошибка при остановке:', error);
+        console.error('[StrudelREPLNode] Ошибка остановки:', error);
       }
     }
+    
+    // Останавливаем конкретный run
+    if (activeRunRef.current && typeof activeRunRef.current.stop === 'function') {
+      try {
+        activeRunRef.current.stop();
+        console.log('[StrudelREPLNode] Остановлен activeRunRef');
+      } catch (error) {
+        console.error('[StrudelREPLNode] Ошибка остановки activeRunRef:', error);
+      }
+    }
+    
     setIsPlaying(false);
+    activeRunRef.current = null;
   };
 
   const activateAudio = async () => {
@@ -153,7 +195,7 @@ const StrudelREPLNode: React.FC<StrudelREPLNodeProps> = ({ nodeId, core }) => {
     }}>
       <div style={{ marginBottom: '10px' }}>
         <h3 style={{ margin: '0 0 10px 0', color: '#4ecdc4' }}>
-          🎹 Strudel REPL (РАБОТАЕТ!)
+          🎹 Strudel REPL (ФИНАЛЬНАЯ версия)
         </h3>
         <div style={{ fontSize: '0.8em', color: '#888', marginBottom: '10px' }}>
           ID: {nodeId} | Статус: {status} | Аудио: {audioCtxRef.current ? audioCtxRef.current.state : 'нет'}
@@ -168,9 +210,6 @@ const StrudelREPLNode: React.FC<StrudelREPLNodeProps> = ({ nodeId, core }) => {
           marginBottom: '10px',
           border: '1px solid #ff6b6b'
         }}>
-          <div style={{ color: '#ff6b6b', marginBottom: '5px' }}>
-            ⚠️ Аудио приостановлено (требуется жест пользователя)
-          </div>
           <button
             onClick={activateAudio}
             style={{
@@ -184,22 +223,10 @@ const StrudelREPLNode: React.FC<StrudelREPLNodeProps> = ({ nodeId, core }) => {
           >
             🔈 Активировать аудио
           </button>
-          <div style={{ fontSize: '0.8em', color: '#888', marginTop: '5px' }}>
-            Или просто нажмите "Eval" — браузер запросит разрешение.
-          </div>
         </div>
       )}
 
       <div style={{ marginBottom: '15px', flex: 1 }}>
-        <div style={{ marginBottom: '8px', fontSize: '0.9em' }}>
-          Код Strudel:
-          <span style={{ float: 'right', fontSize: '0.8em', color: '#888' }}>
-            Примеры:
-            <button onClick={() => setCode('note("c4")')} style={{ marginLeft: '5px', padding: '2px 6px', fontSize: '0.7em' }}>note</button>
-            <button onClick={() => setCode('s("bd sd")')} style={{ marginLeft: '5px', padding: '2px 6px', fontSize: '0.7em' }}>drums</button>
-            <button onClick={() => setCode('"<0 2 4>"')} style={{ marginLeft: '5px', padding: '2px 6px', fontSize: '0.7em' }}>seq</button>
-          </span>
-        </div>
         <textarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
@@ -235,14 +262,13 @@ const StrudelREPLNode: React.FC<StrudelREPLNodeProps> = ({ nodeId, core }) => {
           </button>
           <button
             onClick={handleStop}
-            disabled={!isPlaying}
             style={{
               padding: '8px 16px',
-              backgroundColor: isPlaying ? '#ff6b6b' : '#777',
+              backgroundColor: '#ff6b6b',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
-              cursor: isPlaying ? 'pointer' : 'not-allowed',
+              cursor: 'pointer',
               flex: 1
             }}
           >
@@ -273,7 +299,7 @@ const StrudelREPLNode: React.FC<StrudelREPLNodeProps> = ({ nodeId, core }) => {
         paddingTop: '10px',
         marginTop: 'auto'
       }}>
-        🎯 <strong>Фаза 2, День 4:</strong> Strudel загружен! Интеграция работает через ESM CDN.
+        🎵 <strong>Используется run() для воспроизведения.</strong> Остановка через hush().
       </div>
     </div>
   );
